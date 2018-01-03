@@ -78,7 +78,13 @@ public class FileController {
         List<Map<String, String>> list = Lists.newArrayList();
         File file = new File(fileDir + demoPath);
         if (file.exists()) {
-            Arrays.stream(file.listFiles()).forEach(file1 -> list.add(ImmutableMap.of("fileName", demoDir + "/" + file1.getName())));
+            //Arrays.stream(file.listFiles()).forEach(file1 -> list.add(ImmutableMap.of("fileName", demoDir + "/" + file1.getName())));
+
+            for(File file1:file.listFiles())
+            {
+                list.add(ImmutableMap.of("fileName", demoDir + "/" + file1.getName()));
+            }
+
         }
         return new ObjectMapper().writeValueAsString(list);
     }

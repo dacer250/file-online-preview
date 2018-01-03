@@ -73,7 +73,7 @@ public class ZipReader {
                 }
                 String parentName = getLast2FileName(fullName, archiveSeparator, archiveFileName);
                 parentName = (level-1) + "_" + parentName;
-                FileNode node = new FileNode(originName, childName, parentName, new ArrayList<>(), directory);
+                FileNode node = new FileNode(originName, childName, parentName, (List)new ArrayList<>(), directory);
                 addNodes(appender, parentName, node);
                 appender.put(childName, node);
             }
@@ -95,7 +95,13 @@ public class ZipReader {
         while(entries.hasMoreElements()){
             sortedEntries.add(entries.nextElement());
         }
-        Collections.sort(sortedEntries, Comparator.comparingInt(o -> o.getName().length()));
+      //  Collections.sort(sortedEntries, Comparator.comparingInt(o -> o.getName().length()));
+        Collections.sort(sortedEntries, new Comparator<ZipArchiveEntry>() {
+            @Override
+            public int compare(ZipArchiveEntry o1, ZipArchiveEntry o2) {
+                return o1.getName().length() - o2.getName().length();
+            }
+        });
         return Collections.enumeration(sortedEntries);
     }
 
@@ -123,7 +129,8 @@ public class ZipReader {
                     headersToBeExtracted.add(Collections.singletonMap(childName, header));
                 }
                 String parentName = getLast2FileName(fullName, "\\", archiveFileName);
-                FileNode node = new FileNode(originName, childName, parentName, new ArrayList<>(), directory);
+                List list =new ArrayList<FileNode>();
+                FileNode node = new FileNode(originName, childName, parentName, list, directory);
                 addNodes(appender, parentName, node);
                 appender.put(childName, node);
             }
@@ -141,7 +148,8 @@ public class ZipReader {
         if (appender.containsKey(parentName)) {
             appender.get(parentName).getChildList().add(node);
         }else { // 根节点
-            FileNode nodeRoot = new FileNode(parentName, parentName, "", new ArrayList<>(), true);
+            List list = new ArrayList<FileNode>();
+            FileNode nodeRoot = new FileNode(parentName, parentName, "", list, true);
             nodeRoot.getChildList().add(node);
             appender.put("", nodeRoot);
             appender.put(parentName, nodeRoot);
@@ -151,7 +159,14 @@ public class ZipReader {
     private List<FileHeader> sortedHeaders(List<FileHeader> headers) {
         List<FileHeader> sortedHeaders = new ArrayList<>();
         Map<Integer, FileHeader> mapHeaders = new TreeMap<>();
-        headers.forEach(header -> mapHeaders.put(header.getFileNameW().length(), header));
+        //headers.forEach(header -> mapHeaders.put(header.getFileNameW().length(), header));
+
+        for(FileHeader header:headers)
+        {
+            mapHeaders.put(header.getFileNameW().length(), header);
+        }
+
+
         for (Map.Entry<Integer, FileHeader> entry : mapHeaders.entrySet()){
             for (FileHeader header : headers) {
                 if (entry.getKey().intValue() == header.getFileNameW().length()) {
@@ -204,76 +219,8 @@ public class ZipReader {
         return newName;
     }
 
-    /**
-     * 文件节点(区分文件上下级)
-     */
-    public class FileNode{
 
-        private String originName;
-        private String fileName;
-        private String parentFileName;
-        private boolean directory;
 
-        private List<FileNode> childList;
-
-        public FileNode(String originName, String fileName, String parentFileName, List<FileNode> childList, boolean directory) {
-            this.originName = originName;
-            this.fileName = fileName;
-            this.parentFileName = parentFileName;
-            this.childList = childList;
-            this.directory = directory;
-        }
-
-        public String getFileName() {
-            return fileName;
-        }
-
-        public void setFileName(String fileName) {
-            this.fileName = fileName;
-        }
-
-        public String getParentFileName() {
-            return parentFileName;
-        }
-
-        public void setParentFileName(String parentFileName) {
-            this.parentFileName = parentFileName;
-        }
-
-        public List<FileNode> getChildList() {
-            return childList;
-        }
-
-        public void setChildList(List<FileNode> childList) {
-            this.childList = childList;
-        }
-
-        @Override
-        public String toString() {
-            try {
-                return new ObjectMapper().writeValueAsString(this);
-            } catch (JsonProcessingException e) {
-                e.printStackTrace();
-                return "";
-            }
-        }
-
-        public String getOriginName() {
-            return originName;
-        }
-
-        public void setOriginName(String originName) {
-            this.originName = originName;
-        }
-
-        public boolean isDirectory() {
-            return directory;
-        }
-
-        public void setDirectory(boolean directory) {
-            this.directory = directory;
-        }
-    }
 
     /**
      * Zip文件抽取线程
