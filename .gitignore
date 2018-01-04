@@ -23,7 +23,7 @@ dist/
 nbdist/
 .nb-gradle/
 /*.iml
-
+.META-INF
 **/target/
 .classpath
 .project
