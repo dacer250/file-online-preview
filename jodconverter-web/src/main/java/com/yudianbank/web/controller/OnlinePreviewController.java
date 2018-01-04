@@ -45,11 +45,13 @@ public class OnlinePreviewController {
      * docx:http://keking.ufile.ucloud.com.cn/20171103180053_财产线索类需求20170920(1).docx?UCloudPublicKey=ucloudtangshd@weifenf.com14355492830001993909323&Expires=&Signature=p7/L1W3iwktzRtkY5Ef2vK7kn3o=
      * @param url
      * @param model
+     * @param needEncode url包含空格，则设置 needEncode=1.否则不设置。
      * @return
      */
     @RequestMapping(value = "onlinePreview",method = RequestMethod.GET)
     public String onlinePreview(String url, String needEncode, Model model) throws UnsupportedEncodingException {
         // 路径转码
+
         String decodedUrl = URLDecoder.decode(url, "utf-8");
         String type = typeFromUrl(url);
         String suffix = suffixFromUrl(url);
@@ -104,17 +106,26 @@ public class OnlinePreviewController {
             String pdfName = fileName.substring(0, fileName.lastIndexOf(".") + 1)
                     + ((suffix.equalsIgnoreCase("xls") || suffix.equalsIgnoreCase("xlsx")) ?
                     "html" : "pdf");
+
+
+            //for test
+           //  fileUtils.listConvertedFiles().remove(pdfName);
             // 判断之前是否已转换过，如果转换过，直接返回，否则执行转换
-            if (!fileUtils.listConvertedFiles().containsKey(pdfName)) {
+            if (!fileUtils.listConvertedFiles().containsKey(pdfName) ) {
+
                 String filePath = fileDir + fileName;
                 if (!new File(filePath).exists()) {
+
                     ReturnResponse<String> response = downloadUtils.downLoad(decodedUrl, suffix, null, needEncode);
+
                     if (0 != response.getCode()) {
                         model.addAttribute("msg", response.getMsg());
                         return "fileNotSupported";
                     }
                     filePath = response.getContent();
+
                 }
+
                 String outFilePath = fileDir + pdfName;
                 if (StringUtils.hasText(outFilePath)) {
                     officeToPdf.openOfficeToPDF(filePath, outFilePath);
@@ -131,6 +142,7 @@ public class OnlinePreviewController {
                     fileUtils.addConvertedFile(pdfName, fileUtils.getRelativePath(outFilePath));
                 }
             }
+
             model.addAttribute("pdfUrl", pdfName);
             return "pdf";
         }else {

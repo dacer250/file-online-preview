@@ -1,5 +1,5 @@
 env_base_config = {
-    server_base_url:'http://127.0.0.1:8012/',
+    server_base_url:'http://127.0.0.1:8022/',
 }
 env_config = {
     server_base_url:env_base_config.server_base_url,

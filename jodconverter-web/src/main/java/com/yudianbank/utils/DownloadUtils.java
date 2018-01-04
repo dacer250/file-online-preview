@@ -3,6 +3,7 @@ package com.yudianbank.utils;
 import com.yudianbank.param.ReturnResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 import java.io.*;
 import java.net.*;
 import java.util.UUID;
@@ -16,20 +17,98 @@ public class DownloadUtils {
     @Value("${file.dir}")
     String fileDir;
 
+
+    /**
+     * 获取字符的编码值
+     *
+     * @param s
+     * @return
+     * @throws UnsupportedEncodingException
+     */
+    public static int getValue(char s) throws UnsupportedEncodingException {
+        String temp = (URLEncoder.encode("" + s, "GBK")).replace("%", "");
+        if (temp.equals(s + "")) {
+            return 0;
+        }
+        char[] arr = temp.toCharArray();
+        int total = 0;
+        for (int i = 0; i < arr.length; i++) {
+            try {
+                int t = Integer.parseInt((arr[i] + ""), 16);
+                total = total * 16 + t;
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+                return 0;
+            }
+        }
+        return total;
+    }
+
+    /**
+     * 判断是不是中文字符
+     *
+     * @param c
+     * @return
+     */
+    public static boolean isChinese(char c) {
+
+        Character.UnicodeBlock ub = Character.UnicodeBlock.of(c);
+
+        if (ub == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS
+
+                || ub == Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS
+
+                || ub == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A
+
+                || ub == Character.UnicodeBlock.GENERAL_PUNCTUATION
+
+                || ub == Character.UnicodeBlock.CJK_SYMBOLS_AND_PUNCTUATION
+
+                || ub == Character.UnicodeBlock.HALFWIDTH_AND_FULLWIDTH_FORMS) {
+
+            return true;
+
+        }
+
+        return false;
+
+    }
+
+    /**
+     * 对中文字符进行UTF-8编码
+     *
+     * @param source 要转义的字符串
+     * @return
+     * @throws UnsupportedEncodingException
+     */
+    public static String tranformStyle(String source) throws UnsupportedEncodingException {
+        char[] arr = source.toCharArray();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < arr.length; i++) {
+            char temp = arr[i];
+            if (isChinese(temp)) {
+                sb.append(URLEncoder.encode("" + temp, "UTF-8"));
+                continue;
+            }
+            sb.append(arr[i]);
+        }
+        return sb.toString();
+    }
+
     /**
      * 一开始测试的时候发现有些文件没有下载下来，而有些可以；当时也是郁闷了好一阵，但是最终还是不得解
      * 再次测试的时候，通过前台对比url发现，原来参数中有+号特殊字符存在，但是到后之后却变成了空格，突然恍然大悟
      * 应该是转义出了问题，url转义中会把+号当成空格来计算，所以才会出现这种情况，遂想要通过整体替换空格为加号，因为url
      * 中的参数部分是不会出现空格的，但是文件名中就不好确定了，所以只对url参数部分做替换
+     *
      * @param urlAddress
      * @param type
-     * @param needEncode
-     *      在处理本地文件(测试预览界面的，非ufile)的时候要对中文进行转码，
-     *      因为tomcat对[英文字母（a-z，A-Z）、数字（0-9）、- _ . ~ 4个特殊字符以及所有保留字符]
-     *      以外的字符会处理不正常，导致失败
+     * @param needEncode 在处理本地文件(测试预览界面的，非ufile)的时候要对中文进行转码，
+     *                   因为tomcat对[英文字母（a-z，A-Z）、数字（0-9）、- _ . ~ 4个特殊字符以及所有保留字符]
+     *                   以外的字符会处理不正常，导致失败
      * @return
      */
-    public ReturnResponse<String> downLoad(String urlAddress, String type, String fileName, String needEncode){
+    public ReturnResponse<String> downLoad(String urlAddress, String type, String fileName, String needEncode) {
 //        type = dealWithMS2013(type);
         ReturnResponse<String> response = new ReturnResponse<>(0, "下载成功!!!", "");
         URL url = null;
@@ -38,17 +117,22 @@ public class DownloadUtils {
                 urlAddress = encodeUrlParam(urlAddress);
                 // 因为tomcat不能处理'+'号，所以讲'+'号替换成'%20%'
                 urlAddress = urlAddress.replaceAll("\\+", "%20");
-            }else{
+            } else {
                 urlAddress = replacePlusMark(urlAddress);
             }
+
+
+            String strurl = tranformStyle(urlAddress.substring(urlAddress.lastIndexOf("http")));
+            urlAddress = strurl;
+
             url = new URL(urlAddress);
-        } catch (MalformedURLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         UUID uuid = UUID.randomUUID();
         if (null == fileName) {
-            fileName = uuid+ "."+type;
-        }else { // 文件后缀不一致时，以type为准(针对simText【将类txt文件转为txt】)
+            fileName = uuid + "." + type;
+        } else { // 文件后缀不一致时，以type为准(针对simText【将类txt文件转为txt】)
             fileName = fileName.replace(fileName.substring(fileName.lastIndexOf(".") + 1), type);
         }
         String realPath = fileDir + fileName;
@@ -57,6 +141,7 @@ public class DownloadUtils {
             dirFile.mkdirs();
         }
         try {
+
             URLConnection connection = url.openConnection();
             InputStream in = connection.getInputStream();
 
@@ -68,17 +153,19 @@ public class DownloadUtils {
             }
             os.close();
             in.close();
+
             response.setContent(realPath);
+
             // 同样针对类txt文件，如果成功msg包含的是转换后的文件名
             response.setMsg(fileName);
             return response;
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             response.setCode(1);
             response.setContent(null);
             if (e instanceof FileNotFoundException) {
                 response.setMsg("文件不存在!!!");
-            }else {
+            } else {
                 response.setMsg(e.getMessage());
             }
             return response;
@@ -87,19 +174,20 @@ public class DownloadUtils {
 
     /**
      * 转换url参数部分的空格为加号(因为在url编解码的过程中出现+转为空格的情况)
+     *
      * @param urlAddress
      * @return
      */
     private String replacePlusMark(String urlAddress) {
-        String nonParamStr = urlAddress.substring(0,urlAddress.indexOf("?") + 1);
+        String nonParamStr = urlAddress.substring(0, urlAddress.indexOf("?") + 1);
         String paramStr = urlAddress.substring(nonParamStr.length());
         return nonParamStr + paramStr.replace(" ", "+");
     }
 
     /**
      * 对最有一个路径进行转码
-     * @param urlAddress
-     *          http://192.168.2.111:8013/demo/Handle中文.zip
+     *
+     * @param urlAddress http://192.168.2.111:8013/demo/Handle中文.zip
      * @return
      */
     private String encodeUrlParam(String urlAddress) {
@@ -110,7 +198,7 @@ public class DownloadUtils {
             if (urlAddress.contains("?")) {
                 path = urlAddress.substring(0, urlAddress.indexOf("?"));
                 param = urlAddress.substring(urlAddress.indexOf("?") + 1);
-            }else {
+            } else {
                 path = urlAddress;
             }
             String lastPath = path.substring(path.lastIndexOf("/") + 1);
@@ -127,28 +215,28 @@ public class DownloadUtils {
     }
 
 
-
     /**
      * 因为jodConvert2.1不支持ms2013版本的office转换，这里偷懒，尝试看改一下文件类型，让jodConvert2.1去
      * 处理ms2013，看结果如何，如果问题很大的话只能采取其他方式，如果没有问题，暂时使用该版本来转换
+     *
      * @param type
      * @return
      */
     private String dealWithMS2013(String type) {
         String newType = null;
-        switch (type){
+        switch (type) {
             case "docx":
                 newType = "doc";
-            break;
+                break;
             case "xlsx":
                 newType = "doc";
-            break;
+                break;
             case "pptx":
                 newType = "ppt";
-            break;
+                break;
             default:
                 newType = type;
-            break;
+                break;
         }
         return newType;
     }
