@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.Arrays;
+import java.util.UUID;
 
 /**
  * @author yudian-it
@@ -53,6 +54,8 @@ public class OnlinePreviewController {
         // 路径转码
 
         String decodedUrl = URLDecoder.decode(url, "utf-8");
+        System.out.println(decodedUrl);
+      //  decodedUrl=decodedUrl.replaceAll("\\+"," ");
         String type = typeFromUrl(url);
         String suffix = suffixFromUrl(url);
         // 抽取文件并返回文件列表
@@ -70,13 +73,33 @@ public class OnlinePreviewController {
             model.addAttribute("ordinaryUrl", response.getMsg());
             return "txt";
         } else if(type.equalsIgnoreCase("pdf")){
-            model.addAttribute("pdfUrl",url);
+          //  String pdfName = fileName.substring(0, fileName.lastIndexOf(".") + 1);
+            String filePath = fileDir + fileName;
+            if (!new File(filePath).exists()) {
+
+                ReturnResponse<String> response = downloadUtils.downLoad(decodedUrl, suffix, fileName, needEncode);
+
+                if (0 != response.getCode()) {
+                    model.addAttribute("msg", response.getMsg());
+                    return "fileNotSupported";
+                }
+                filePath = response.getContent();
+                System.out.println("filePath:"+filePath);
+
+            }
+
+            String outFilePath = fileDir + fileName;
+            if (StringUtils.hasText(outFilePath)) {
+                fileUtils.addConvertedFile(fileName, fileUtils.getRelativePath(outFilePath));
+            }
+            model.addAttribute("pdfUrl",fileName);
             return "pdf";
         } else if(type.equalsIgnoreCase("compress")){
             // 抽取文件并返回文件列表
             String fileTree = null;
             // 判断文件名是否存在(redis缓存读取)
             if (!StringUtils.hasText(fileUtils.getConvertedFile(fileName))) {
+
                 ReturnResponse<String> response = downloadUtils.downLoad(decodedUrl, suffix, fileName, needEncode);
                 if (0 != response.getCode()) {
                     model.addAttribute("msg", response.getMsg());
@@ -111,6 +134,7 @@ public class OnlinePreviewController {
             //for test
            //  fileUtils.listConvertedFiles().remove(pdfName);
             // 判断之前是否已转换过，如果转换过，直接返回，否则执行转换
+           // String newName = UUID.randomUUID().toString()+".pdf";
             if (!fileUtils.listConvertedFiles().containsKey(pdfName) ) {
 
                 String filePath = fileDir + fileName;
@@ -142,7 +166,9 @@ public class OnlinePreviewController {
                     fileUtils.addConvertedFile(pdfName, fileUtils.getRelativePath(outFilePath));
                 }
             }
-
+            //
+            System.out.println("pdfurl:"+pdfName);
+            // model.addAttribute("pdf",newName);
             model.addAttribute("pdfUrl", pdfName);
             return "pdf";
         }else {

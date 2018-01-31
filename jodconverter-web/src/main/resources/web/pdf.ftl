@@ -11,9 +11,10 @@
     </style>
 </head>
 <body>
-    <iframe src="${pdfUrl}" width="100%" frameborder="0"></iframe>
+    <#--<iframe src="${pdfUrl}" width="100%" frameborder="0"></iframe>-->
 </body>
 <script type="text/javascript">
+    window.location ="http://test.sigma-stat.com/SIGMA/static/web/viewer.html?file=${pdfUrl}";
     document.getElementsByTagName('iframe')[0].height = document.documentElement.clientHeight-10;
     /**
      * 页面变化调整高度

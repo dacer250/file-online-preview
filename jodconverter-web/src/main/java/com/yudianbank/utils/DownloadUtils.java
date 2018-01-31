@@ -151,6 +151,7 @@ public class DownloadUtils {
             while ((read = in.read(buffer)) > 0) {
                 os.write(buffer, 0, read);
             }
+            os.flush();
             os.close();
             in.close();
 
